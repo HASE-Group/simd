@@ -10,7 +10,7 @@
 class Clock;
 class acu;
 class memory;
-class pe1;
+class pe2;
 class simd2;
 
 int pow(int, int);  // forms exponential without using doubles
@@ -46,4 +46,8 @@ int Decode_COMP(t_simd_instrn_set Instruction);
 int Decode_DBL(t_simd_instrn_set Instruction);
 
 int is_a_function(t_simd_instrn_set Instruction);
+
+
+
+
 
