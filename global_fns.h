@@ -3,25 +3,9 @@
 // File		globals_fns.h
 // Date:	Oct 2005
 
-// Units are declared here to allow forward references between
-// them. HASE automatically declares them from the .edl file, but in
-// sequence, only allowing backward references.
-
-class Clock;
-class acu;
-class memory;
-class pe1;
-class simd2;
-
 int pow(int, int);  // forms exponential without using doubles
 
-struct t_reg_args {
-  char type;       // Either R or F
-  int  number;     // Register number
-  int  index;	   // Offset (if any)
-};
-
-class t_reg_args Decode_Register(char *Instruction);
+t_reg_args Decode_Register(char *Instruction);
 
 int Decode_LOAD(t_simd_instrn_set Instruction);
 

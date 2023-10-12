@@ -41,7 +41,7 @@ $class_decls
   int address, operand, sign_ext, op_mask;
 
   int old_state;
-  char* name;
+  const char* name;
   int proc_no; 
   int select, pec_select, mask_mask;
 

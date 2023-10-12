@@ -9,6 +9,8 @@ PROJECT(
 
 -- DEFINITION OF INSTRUCTION STRUCTURES
 
+   STRUCT ( t_reg_args, [ RCHAR(type, 'R'), RINT(number, 0), RINT(index, 0) ] );
+
 -- operands for load/store from/to memory using address +(index reg)
 	STRUCT (t_load, [RSTRING (dest_reg, "-", 5), RSTRING (src_reg, "-", 5),
 RINT (address, 0)]);
