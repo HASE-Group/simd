@@ -1,14 +1,14 @@
-
-// Project:	Array Processor
-// Entity	Array Control unit
-// File		acu2.hase
-// Date:	Nov 2005, revised Mar 2014
+// Project:		2d-Array Processor
+// Entity		Array Control unit
+// File			acu2.hase
+// Date created:	Nov 2005
+// Modified		May 2016
+// Last modified	Jan 2024
 
 $class_decls
 
 //entity references
 
-  Clock * myClock;
   memory * myMem;
   pe2 * myPE0;
   pe2 * myPE1;
@@ -39,8 +39,6 @@ $class_decls
   char  Destination[8], Source1[8], Source2[8];
   char new_label[8];
   char src1T, src2T, destT;
-  int cycle;  
-  int max_cycles;  
   int cond_code;
   int i, literal, sign_bit, sign_ext;
   int mem_address, d_input;
@@ -92,7 +90,6 @@ myPE15 = (pe2*)sim.get_entity(sim.get_entity_id("SIMD2._3_3_"));
   strcpy(PC.label, "main");
   PC.offset = 0;
   my_state = ACU_IDLE;
-  my_state = ACU_IDLE;
   dump_state();
   d_mem_access = false;
   i_mem_access = false;
@@ -101,33 +98,25 @@ myPE15 = (pe2*)sim.get_entity(sim.get_entity_id("SIMD2._3_3_"));
   div_error = false;
   time_out = false;
 
-  PEControl     = 0xFFFF;
+  PEC     = 0xFFFF;
   PE_CONTROL    = 0xFFFF;
-  PEC3          = 0xF;
-  PEC2          = 0xF;
-  PEC1          = 0xF;
-  PEC0          = 0xF;
   cond_code = 0;
-
-
-// set max_cycles to 2 ^ log_max_cycles
-
-   max_cycles = 1 << log_max_cycles;
 
 // preset instruction to NOP
 
-  IRA1.reset();
-  IRA2.reset();
-  IRP.reset();
+  AC_IR.reset();
+  pe_ir.reset();
+  PE_IR.reset();
   i_mem_access = true;
   my_state = ACU_BUSY;
   dump_state();
 
-  myClock = (Clock*) sim.get_entity( sim.get_entity_id( "CLOCK" ) );
 
 $phase0
 
-  cycle = myClock->cycle / 2;
+ Max_Time_Left = Max_Time_Left - 20;
+ if (Max_Time_Left <= 0)
+  {time_out = true;}
 
 // predicates for use in sim_waiting test
 
@@ -141,9 +130,9 @@ $phase0
        {
 	 SIM_CAST_DEL(int, d_input, ev);
 
-	if (IRA1.function == t_simd_instrn_set::LDM)
+	if (AC_IR.function == t_simd_instrn_set::LDM)
 	 {
-	  	strcpy(Destination, IRA1.load_field.dest_reg);
+	  	strcpy(Destination, AC_IR.load_field.dest_reg);
 	  	dest_args = Decode_Register(Destination);
 		destT  = dest_args.type;
 	  	dest  = dest_args.number & 15;
@@ -161,41 +150,43 @@ $phase0
 		stopSimulation(-1);
 		}
 	 }
-	else if (IRA1.function == t_simd_instrn_set::STM)
+	else if (AC_IR.function == t_simd_instrn_set::STM)
 	 {
 		PC.offset ++;
 		i_mem_access = true;
-	 }
+	  }
        }
   else if  (sim_waiting(ev, I_Input) > 0)
        {
 	SIM_CAST_DEL(t_simd_instrn_set, i_input, ev);
-	IRA1 = i_input;
-	IRP = i_input;
+	AC_IR = i_input;
+	PE_IR = i_input;
 
 	stop = false;
 	sign_ext = 0;
 
-  if ( (!IRA1.decode_AALU())
-    && (!IRA1.decode_AALUI())
-    && (!IRA1.decode_AALUM())
-    && (!IRA1.decode_ASETPEC())
-    && (!Decode_AMISC(IRA1)) )
+  if ( (!AC_IR.decode_AALU())
+    && (!AC_IR.decode_AALUI())
+    && (!AC_IR.decode_AALUM())
+    && (!AC_IR.decode_ASETPEC())
+    && (!Decode_AMISC(AC_IR)) )
      {
-	my_state = ACU_BUSY;
+	pe_ir.reset();
 
-	IRA2.reset();
-
-	if (IRA1.function == t_simd_instrn_set::STOP)
-	 {
+	  if (AC_IR.function == t_simd_instrn_set::STOP)
+	   {
 		stop = true;
 		my_state = ACU_IDLE;
 		stopSimulation(0);
-	 }
-
-	if (IRA1.function == t_simd_instrn_set::JUMP)
-	 {	// Jump to PC = literal
-		literal = IRA1.immediate & 65535;
+	   }
+	  else
+	   {
+		my_state = ACU_BUSY;
+		dump_state();
+	   }	
+	  if (AC_IR.function == t_simd_instrn_set::JUMP)
+	   {    // Jump to PC = literal
+		literal = AC_IR.immediate & 65535;
 						// mask off ms 16 bits
 		if ((literal & 32768) != 0)
 			{sign_ext = -1 ^ 65535;} // generate sign extension
@@ -203,11 +194,11 @@ $phase0
 	 	strcpy(PC.label, "main");
 		PC.offset = literal;
 		i_mem_access = true;
-	 }
-
-	if (IRA1.function == t_simd_instrn_set::JREG)
-	 {	// Jump to PC = value in register
-	  	strcpy(Source1, IRA1.src_reg);
+   	   }
+		
+	  if (AC_IR.function == t_simd_instrn_set::JREG)
+	   { // Jump to PC = value in register
+	  	strcpy(Source1, AC_IR.src_reg);
 	  	src1_args = Decode_Register(Source1);
 		src1T  = src1_args.type;
 	  	src1  = src1_args.number & 15;
@@ -218,32 +209,33 @@ $phase0
 		  PC.offset = src1_op;
 		  i_mem_access = true;
 		 }
-		else
-		 {reg_error = true;
-		  stopSimulation(-1);
-		 }
-	 }
-
-	if (IRA1.function == t_simd_instrn_set::BRANCH)
-	 {	// Branch if CC = 1
+		else {reg_error = true;
+		  stopSimulation(-1);}
+	   }
+	   
+	  if (AC_IR.function == t_simd_instrn_set::BRANCH)
+	   { // Branch if CC = 1
 		if (CC == 1)
 		 {PC.offset = 0;
-		  strcpy(PC.label, IRA1.label);}
+		  strcpy(PC.label, AC_IR.label);}
 		else
 		 {PC.offset ++;}
 		 i_mem_access = true;
-	 }
+           }
+
 // LD and LDI use the same instruction format. LD treats the immediate
 // field as an address, LDI treats it as a value; the difference is in
 // the microcode.
 
-	if (IRA1.function == t_simd_instrn_set::LDI)
-	 {	// Load ACU Register with Immediate
-	  	strcpy(Destination, IRA1.loadi_field.dest_reg);
+	  if (AC_IR.function == t_simd_instrn_set::LDI)
+	   {  // Load ACU Register with Literal
+	  	strcpy(Destination, AC_IR.loadi_field.dest_reg);
 	  	dest_args = Decode_Register(Destination);
 		destT  = dest_args.type;
+		if (destT == 'X')
+		 {stopSimulation(-3);}
 	  	dest  = dest_args.number & 15;
-		literal = IRA1.loadi_field.immediate & 65535;
+		literal = AC_IR.loadi_field.immediate & 65535;
 						// mask off ms 16 bits
 		if ((literal & 32768) != 0)
 			{sign_ext = -1 ^ 65535;} // generate sign extension
@@ -258,41 +250,39 @@ $phase0
 		  PC.offset ++;
 		  i_mem_access = true;
 		 }
-		else
-		 {reg_error = true;
-		  stopSimulation(-1);
-		 }
-	 }
-
-	if (IRA1.function == t_simd_instrn_set::LPEC)
-	 {	// Load PE_CONTROL register with immediate
-		PEControl = IRA1.immediate & 0xFFFF;
+		else {reg_error = true;
+		  stopSimulation(-1);}
+	   }
+	   
+	  if (AC_IR.function == t_simd_instrn_set::LPEC)
+	   { // Load PE_CONTROL register with immediate
+		PEC = AC_IR.immediate & 0xFFFF;
 						// mask off ms 24 bits
-		PE_CONTROL = PEControl;
+		PE_CONTROL = PEC;
 		PC.offset ++;
 		i_mem_access = true;
-	 }
-
-	if (IRA1.function == t_simd_instrn_set::IPEC)
-	 {	// Invert  PE_CONTROL bits
-		PEControl = PEControl ^ -1;
-		PE_CONTROL = PEControl;
+	   }
+	   
+	  if (AC_IR.function == t_simd_instrn_set::IPEC)
+	   {  // Invert  PE_CONTROL bits
+		PEC = PEC ^ -1;
+		PE_CONTROL = PEC;
 		PC.offset ++;
 		i_mem_access = true;
-	 }
-
-	if (IRA1.function == t_simd_instrn_set::LDM)
-	 {	// Load ACU Register value from memory[address + index]
+	   }
+	   
+	  if (AC_IR.function == t_simd_instrn_set::LDM)
+	   { // Load ACU Register value from memory[address + index]
 		d_mem_access = true;
 		strcpy(dmem_request.status,"r");
-		strcpy(Source1, IRA1.load_field.src_reg);
+		strcpy(Source1, AC_IR.load_field.src_reg);
 	  	src1_args = Decode_Register(Source1);
 		src1T  = src1_args.type;
 	  	src1  = src1_args.number & 15;
 		if (src1T == 'R')
 		 {
 		  src1_op = main_reg[src1].reg_value;
-		  mem_address = src1_op + IRA1.load_field.address;
+		  mem_address = src1_op + AC_IR.load_field.address;
 		  dmem_request.address = mem_address;
 		  dmem_request.data = 0;
 		 }
@@ -300,36 +290,34 @@ $phase0
 		 {reg_error = true;
 		  stopSimulation(-1);
 		 }
-	 }
-
-	if (IRA1.function == t_simd_instrn_set::STM)
-	 {	// Store ACU Register value to memory[address + index]
+	   }
+	   
+	  if (AC_IR.function == t_simd_instrn_set::STM)
+	   { // Store ACU Register value to memory[address + index]
 		d_mem_access = true;
-		strcpy(Source1, IRA1.store_field.src_reg);
+		strcpy(Source1, AC_IR.store_field.src_reg);
 	  	src1_args = Decode_Register(Source1);
 		src1T  = src1_args.type;
 	  	src1  = src1_args.number & 15;
 		src1_op = main_reg[src1].reg_value;
 		dmem_request.data = src1_op;
-		strcpy(Source2, IRA1.store_field.dest_reg);
+		strcpy(Source2, AC_IR.store_field.dest_reg);
 	  	src2_args = Decode_Register(Source2);
 	  	src2  = src2_args.number & 15;
 		src2_op = main_reg[src2].reg_value;
 		if ((src1T == 'R') && (src2T == 'R'))
 		 {
-		  mem_address = src2_op + IRA1.store_field.address;
+		  mem_address = src2_op + AC_IR.store_field.address;
 		  dmem_request.address = mem_address;
 		 }
-		else
-		 {reg_error = true;
-		  stopSimulation(-1);
-		 }
-	 }
-
-	if (IRA1.function == t_simd_instrn_set::MOV)
-	 {
-		strcpy(Source1, IRA1.move_field.src_reg);
-		strcpy(Destination, IRA1.move_field.dest_reg);
+		else {reg_error = true;
+		  stopSimulation(-1);}
+	   }
+	   
+	  if (AC_IR.function == t_simd_instrn_set::MOV)
+	   {
+		strcpy(Source1, AC_IR.move_field.src_reg);
+		strcpy(Destination, AC_IR.move_field.dest_reg);
 	  	src1_args = Decode_Register(Source1);
 		src1T = src1_args.type;
 		if (src1T == 'X')
@@ -443,13 +431,13 @@ $phase0
 		 }
 		PC.offset ++;
 		i_mem_access = true;
-	}
+	      }
 
-  if (IRA1.decode_ALU())
+  if (AC_IR.decode_ALU())
    {
-  	strcpy(Destination, IRA1.alu_field.dest_reg);
-  	strcpy(Source1, IRA1.alu_field.src_reg1);
-  	strcpy(Source2, IRA1.alu_field.src_reg2);
+  	strcpy(Destination, AC_IR.alu_field.dest_reg);
+  	strcpy(Source1, AC_IR.alu_field.src_reg1);
+  	strcpy(Source2, AC_IR.alu_field.src_reg2);
   	src1_args = Decode_Register(Source1);
   	src1  = src1_args.number & 15;
 	src1T  = src1_args.type;
@@ -464,59 +452,59 @@ $phase0
 	  src1_op = main_reg[src1].reg_value;
 	  src2_op = main_reg[src2].reg_value;
 
-	 if (IRA1.function == t_simd_instrn_set::ADD)
-	  {	// ADD Rx Ry Rz: Rx = Ry + Rz
+    	if (AC_IR.function == t_simd_instrn_set::ADD)
+	 {  // ADD Rx Ry Rz: Rx = Ry + Rz
 		dest_op = src1_op + src2_op;
-	  }
+	 }
 
-	 else if (IRA1.function == t_simd_instrn_set::SUB)
-	  {	// SUB Rx Ry Rz: Rx = Ry - Rz
+	if (AC_IR.function == t_simd_instrn_set::SUB)
+	 { // SUB Rx Ry Rz: Rx = Ry - Rz
 		dest_op = src1_op - src2_op;
-	  }
+	 }
 
-	 else if (IRA1.function == t_simd_instrn_set::MUL)
-	  {	// MUL Rx Ry Rz: Rx = Ry & Rz
+	  if (AC_IR.function == t_simd_instrn_set::MUL)
+	   { // MUL Rx Ry Rz: Rx = Ry & Rz
 		dest_op = src1_op * src2_op;
-	  }
+	   }
 
-	 else if (IRA1.function == t_simd_instrn_set::DIV)
-	  {	// DIV Rx Ry Rz: Rx = Ry & Rz
+	  if (AC_IR.function == t_simd_instrn_set::DIV)
+	   { // DIV Rx Ry Rz: Rx = Ry & Rz
 		if (src2_op == 0)
 		 {div_error = true;
 		  stopSimulation(0);}
 		else
 		  {dest_op = src1_op / src2_op;}
-	  }
+	   }
 
-	 if (IRA1.function == t_simd_instrn_set::AND)
-	  {	// AND Rx Ry Rz: Rx = Ry & Rz
+	  if (AC_IR.function == t_simd_instrn_set::AND)
+	   {  // AND Rx Ry Rz: Rx = Ry & Rz
 		dest_op = src1_op & src2_op;
-	  }
+	   }
 
-	 else if (IRA1.function == t_simd_instrn_set::OR)
-	  {	// OR Rx Ry Rz: Rx = Ry v Rz
+	  if (AC_IR.function == t_simd_instrn_set::OR)
+	  {  // OR Rx Ry Rz: Rx = Ry v Rz
 		dest_op = src1_op | src2_op;
 	  }
 
-	 else if (IRA1.function == t_simd_instrn_set::XOR)
-	  {	// XOR Rx Ry Rz: Rx = Ry ^ Rz
+	 if (AC_IR.function == t_simd_instrn_set::XOR)
+	  { // XOR Rx Ry Rz: Rx = Ry ^ Rz
 		dest_op = src1_op ^ src2_op;
 	  }
 
-	 else if (IRA1.function == t_simd_instrn_set::SLL)
-	  {	// Shift Left Logical Rx Ry Rz: Rx = Ry < Rz
+	 if (AC_IR.function == t_simd_instrn_set::SLL)
+	  { // Shift Left Logical Rx Ry Rz: Rx = Ry < Rz
 		dest_op = src1_op << src2_op;
 	  }
 
-	 else if (IRA1.function == t_simd_instrn_set::SRL)
-	  {	// Shift Right Logical Rx Ry Rz: Rx = Ry > Rz
+	 if (AC_IR.function == t_simd_instrn_set::SRL)
+	  { // Shift Right Logical Rx Ry Rz: Rx = Ry > Rz
 		dest_op = src1_op << src2_op;
 		mask = -1 ^ ( ( (pow (2, src2_op)) - 1) << (32 - src2_op));
 		dest_op = (src1_op >> src2_op) & mask;
 	  }
 
-	 else if (IRA1.function == t_simd_instrn_set::SRA)
-	  {	// Shift Right Arithmetic Rx Ry Rz: Rx = Ry > Rz
+	 if (AC_IR.function == t_simd_instrn_set::SRA)
+	  { // Shift Right Arithmetic Rx Ry Rz: Rx = Ry > Rz
 		sign_bit = src1_op & (1 << 31);
 		sign_ext = ( (pow (2, src2_op)) - 1) >> (32 - src2_op);
 		dest_op = (src1_op >> src2_op);
@@ -531,18 +519,16 @@ $phase0
 	  PC.offset ++;
 	  i_mem_access = true;
 	 }	// end of if ((src1T ...))
-	else
-	 {reg_error = true;
-	  stopSimulation(-1);
-	 }
+	else {reg_error = true;
+	  stopSimulation(-1);}
 
-   } // end of if ( (IRA1.decode_ALU()) ...)
+   } // end of if ( (AC_IR.decode_ALU()) ...)
 
-  if (IRA1.decode_ALUI())
+  if (AC_IR.decode_ALUI())
    {
-  	strcpy(Destination, IRA1.alui_field.dest_reg);
-  	strcpy(Source1, IRA1.alui_field.src_reg1);
-	literal = IRA1.alui_field.immediate & 65535;
+  	strcpy(Destination, AC_IR.alui_field.dest_reg);
+  	strcpy(Source1, AC_IR.alui_field.src_reg1);
+	literal = AC_IR.alui_field.immediate & 65535;
 					// mask off ms 16 bits
 	if ((literal & 32768) != 0)
 		{sign_ext = -1 ^ 65535;} // generate sign extension
@@ -557,64 +543,64 @@ $phase0
 	 {
 	  src1_op = main_reg[src1].reg_value;
 
-	 if (IRA1.function == t_simd_instrn_set::ADDI)
-	  {	// ADDL Rx Ry L: Rx = Ry + Literal
+    	if (AC_IR.function == t_simd_instrn_set::ADDI)
+	 {  // ADDL Rx Ry L: Rx = Ry + Literal
 		dest_op = src1_op + literal;
+	 }
+	
+	if (AC_IR.function == t_simd_instrn_set::SUBI)
+	 { // SUB Rx Ry L: Rx = Ry - Literal
+		  dest_op = src1_op - literal;
+	 }
+
+	  if (AC_IR.function == t_simd_instrn_set::MULI)
+	   { // MULL Rx Ry L: Rx = Ry * Literal
+		  dest_op = src1_op * literal;
 	   }
 
-	 else if (IRA1.function == t_simd_instrn_set::SUBI)
-	  {	// SUB Rx Ry L: Rx = Ry - Literal
-		  dest_op = src1_op - literal;
-	  }
-
-	 else if (IRA1.function == t_simd_instrn_set::MULI)
-	  {	// MULL Rx Ry L: Rx = Ry * Literal
-		  dest_op = src1_op * literal;
-	  }
-
-	 else if (IRA1.function == t_simd_instrn_set::DIVI)
-	  {	// DIVL Rx Ry L: Rx = Ry / Literal
+	  if (AC_IR.function == t_simd_instrn_set::DIVI)
+	   { // DIVL Rx Ry L: Rx = Ry / Literal
 		if (literal == 0)
 		 {div_error = true;
 		  stopSimulation(0);}
 		else
 		  {dest_op = src1_op / literal;}
-	  }
+	   }
 
-	 else if (IRA1.function == t_simd_instrn_set::ANDI)
-	  {	// AND Rx Ry L: Rx = Ry & Literal
+	  if (AC_IR.function == t_simd_instrn_set::ANDI)
+	   { // AND Rx Ry L: Rx = Ry & Literal
 		  dest_op = src1_op & literal;
-	  }
+	   }
 
-	 else if (IRA1.function == t_simd_instrn_set::ORI)
-	  {	// OR Rx Ry L: Rx = Ry v Literal
+	  if (AC_IR.function == t_simd_instrn_set::ORI)
+	   { // OR Rx Ry L: Rx = Ry v Literal
 		  dest_op = src1_op | literal;
-	  }
+	   }
 
-	 else if (IRA1.function == t_simd_instrn_set::XORI)
-	  {	// XOR Rx Ry L: Rx = Ry ^ Literal
+	  if (AC_IR.function == t_simd_instrn_set::XORI)
+	   { // XOR Rx Ry L: Rx = Ry ^ Literal
 		  dest_op = src1_op ^ literal;
-	  }
+	   }
 
-	 else if (IRA1.function == t_simd_instrn_set::SLLI)
-	  {	// Shift Left Logical Rx Ry Rz: Rx = Ry > Literal
+	  if (AC_IR.function == t_simd_instrn_set::SLLI)
+	   { // Shift Left Logical Rx Ry Rz: Rx = Ry > Literal
 		  dest_op = src1_op << literal;
-	  }
+	   }
 
-	 else if (IRA1.function == t_simd_instrn_set::SRLI)
-	  {	// Shift Right Logical Rx Ry L: Rx = Ry > Literal
+	  if (AC_IR.function == t_simd_instrn_set::SRLI)
+	   { // Shift Right Logical Rx Ry L: Rx = Ry > Literal
 		  mask = -1 ^ ( ( (pow (2, literal)) - 1) << (32 - literal));
 		  dest_op = (src1_op >> literal) & mask;
-	  }
+	   }
 
-	 else if (IRA1.function == t_simd_instrn_set::SRAI)
-	  {	// Shift Right Arithmetic Rx Ry L: Rx = Ry > Literal
+	  if (AC_IR.function == t_simd_instrn_set::SRAI)
+	   { // Shift Right Arithmetic Rx Ry L: Rx = Ry > Literal
 		  sign_bit = src1_op & (1 << 31);
 		  sign_ext = ( (pow (2, literal)) - 1) >> (32 - literal);
 		  dest_op = (src1_op >> literal);
 			if (sign_bit != 0)
 			{dest_op = dest_op | sign_ext;}
-	  }
+	    }
 
 		  update.reg_value = dest_op;
 	 	  if (dest == 0)
@@ -623,17 +609,16 @@ $phase0
 		  PC.offset ++;
 		  i_mem_access = true;
 	}	// end of if ((src1T ...))
-		else
-		 {reg_error = true;
-		  stopSimulation(-1);
-		 }
-   }	// end of if ( (IRA1.decode_ALUL()) ... )
+		else {reg_error = true;
+		  stopSimulation(-1);}
+
+   }	// end of if ( (AC_IR.decode_ALUL()) ... )
 
 
-  if (IRA1.decode_SETCC() )
+  if (AC_IR.decode_SETCC() )
    {
-  	strcpy(Source1, IRA1.comp_field.src_reg1);
-  	strcpy(Source2, IRA1.comp_field.src_reg2);
+  	strcpy(Source1, AC_IR.comp_field.src_reg1);
+  	strcpy(Source2, AC_IR.comp_field.src_reg2);
   	src1_args = Decode_Register(Source1);
   	src1  = src1_args.number & 15;
 	src1T  = src1_args.type;
@@ -644,71 +629,65 @@ $phase0
 	 {
 	  src1_op = main_reg[src1].reg_value;
 	  src2_op = main_reg[src2].reg_value;
-	  CC = 0;
-	
-	 if (IRA1.function == t_simd_instrn_set::SEQ)
-	  {	// Set CC = 1 if RS1 = RS2
+	  CC = 0;	
+
+	 if (AC_IR.function == t_simd_instrn_set::SEQ)
+	  { // Set CC = 1 if RS1 = RS2
 	 	  if (src1_op == src2_op)
 	  	   {CC = 1;}
-//		printf("ACU: executing SEQ\n");
 	  }
 
-	 else if (IRA1.function == t_simd_instrn_set::SNE)
-	  {	// Set CC = 1 if RS1 != RS2
+	 if (AC_IR.function == t_simd_instrn_set::SNE)
+	  { // Set CC = 1 if RS1 != RS2
 	 	  if (src1_op != src2_op)
 	  	   {CC = 1;}
-//		printf("ACU: executing SNE\n");
 	  }
 
-	 else if (IRA1.function == t_simd_instrn_set::SGT)
-	  {	// Set CC = 1 if RS1 > RS2
+	 if (AC_IR.function == t_simd_instrn_set::SGT)
+	  { // Set CC = 1 if RS1 > RS2
 	 	  if (src1_op > src2_op)
 	  	   {CC = 1;}
-//		printf("ACU: executing SG\n");
 	  }
 
-	 else if (IRA1.function == t_simd_instrn_set::SLT)
-	  {	// Set CC = 1 if RS1 < RS2
+	 if (AC_IR.function == t_simd_instrn_set::SLT)
+	  { // Set CC = 1 if RS1 < RS2
 	 	  if (src1_op < src2_op)
 	  	   {CC = 1;}
-//		printf("ACU: executing SLT\n");
 	  }
 
-	 else if (IRA1.function == t_simd_instrn_set::SGE)
-	  {	// Set CC = 1 if RS1 >= RS2
+	 if (AC_IR.function == t_simd_instrn_set::SGE)
+	  { // Set CC = 1 if RS1 >= RS2
 	 	  if (src1_op >= src2_op)
 	  	   {CC = 1;}
-//		printf("ACU: executing SGE\n");
-	   }
+	  }
 
-	 else if (IRA1.function == t_simd_instrn_set::SLE)
-	  {	// Set CC = 1 if RS1 <= RS2
+	 if (AC_IR.function == t_simd_instrn_set::SLE)
+	  { // Set CC = 1 if RS1 <= RS2
 	 	  if (src1_op <= src2_op)
 	  	   {CC = 1;}
-//		printf("ACU: executing SLE\n");
-	   }
+	  }
 
 	 	  PC.offset ++;
 		  i_mem_access = true;
 	}	// end of if (( src1T ...))
-		else
-		 {reg_error = true;
-		  stopSimulation(-1);
-		 }
+		else {reg_error = true;
+		  stopSimulation(-1);}
+
    }	// end of SETCC instructions
 
- }	// end of if (( (!IRA1.decode_AALU()) ... ))
+ }	// end of if (( (!AC_IR.decode_AALU()) ... ))
   else	// Array instructions
     {
-	IRA2 = IRA1;
-	if (IRA1.decode_ASETPEC())
+	pe_ir = AC_IR;
+
+	if (AC_IR.decode_ASETPEC())
    	 {
 	  PE_CONTROL = 0;
 	 }
 
-	 if (IRA1.function == t_simd_instrn_set::ALDR)
+	 if (AC_IR.function == t_simd_instrn_set::ALDR)
 	  {
-	   strcpy(Source1, IRA1.loadr_field.src_reg);
+	   strcpy(Source1, AC_IR.loadr_field.src_reg);
    	   src1_args = Decode_Register(Source1);
 	   src1  = src1_args.number & 15;
 		src1T = src1_args.type;
@@ -716,14 +695,14 @@ $phase0
 		 {reg_error = true;
 		  stopSimulation(-1);
 		 }
-	   IRA2.function = t_simd_instrn_set::ALDI;
-	   IRA2.immediate = main_reg[src1].reg_value;
-	   IRP = IRA2;
+	   pe_ir.function = t_simd_instrn_set::ALDI;
+	   pe_ir.immediate = main_reg[src1].reg_value;
+	   PE_IR = pe_ir;
 	  }
-	 if (IRA1.decode_AALUM())
+	 if (AC_IR.decode_AALUM())
 	  {
 	  // PE operand is from memory[address + index]
-	   strcpy(Source1, IRA1.a_alum_field.src_reg);
+	   strcpy(Source1, AC_IR.a_alum_field.src_reg);
    	   src1_args = Decode_Register(Source1);
 	   src1  = src1_args.number & 15;
 		src1T = src1_args.type;
@@ -731,43 +710,31 @@ $phase0
 		 {reg_error = true;
 		  stopSimulation(-1);
 		 }
-	   IRA2 = IRA1; 
-	   IRA2.a_alum_field.address = main_reg[src1].reg_value + IRA1.a_alum_field.address;
-	   IRP = IRA2;
+	   pe_ir = AC_IR; 
+	   pe_ir.a_alum_field.address = main_reg[src1].reg_value + AC_IR.a_alum_field.address;
+	   PE_IR = pe_ir;
 	  }
 	PC.offset ++;
         i_mem_access = true;
     }
+  	PEC = PE_CONTROL;	// PE_CONTROL is the global variable
+				// PEC is the version displayed
 	
+	} 				// end of code for new instruction pkt
 	dump_state();
- 
-	} 		// end of code for new instruction pkt
+	dump_globals(); 
 
 $phase1
 
 // stop simulation if max cycles exceeded
 
-  if (no>=max_cycles) 
-	{
-	 time_out = true;
-	 stopSimulation(0);
-	}
+   if (time_out)
+    {stopSimulation(0);}
 
-  	PEControl = PE_CONTROL;	// PE_CONTROL is the global variable
-				// PEControl is the version displayed
-	PEC0 = PEControl & 15;
-	PEC1 = (PEControl >> 4) & 15;
-	PEC2 = (PEControl >> 8) & 15;
-	PEC3 = (PEControl >> 12) & 15;
-
-	IRP.reset();
-
-	dump_state_i();
+	PE_IR.reset();
 
   if (i_mem_access) {
 	i_mem_access = false;
-	my_state = ACU_IDLE;
-	dump_state();
 	imem_request.address.offset = PC.offset;
 	strcpy(imem_request.address.label,PC.label);
 	strcpy(imem_request.status,"i");
@@ -778,6 +745,8 @@ $phase1
 	send_D_MEM_ACCESS(data_request, dmem_request);
 	d_mem_access = false;
 	}
+
+	dump_state();
 
 	// end of  ClockPhase 1
 
@@ -790,4 +759,4 @@ $report
    {printf("Simulation aborted: attempted divide by zero\n");}
 
   if (time_out)
-   {printf("Simulation timed out -> increase ACU max_cycles\n");}
+   {printf("Simulation timed out -> increase Max_Cycles_Left \n");}
