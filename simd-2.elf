@@ -1,36 +1,30 @@
-CLOCK : position (20,260)
-CPHASE : position (20,260)
+MEMORY : position (10,20)
+MEMORY : STATES M_IDLE:memory_idle M_BUSY:memory_busy
+MEMORY : port instr_request side RIGHT position 15 ICON portl
+MEMORY : port data_request side RIGHT position 15 ICON portl
+MEMORY : port instr_out side RIGHT position 45
+MEMORY : port data_out side RIGHT position 45
+
+ACU : position (200,20)
+ACU : STATES ACU_IDLE:acu_idle ACU_BUSY:acu_busy
+ACU : PARAM PC MODE VALUE POSITION (225,2)
+ACU : PARAM CC MODE VALUE POSITION (225,18)
+ACU : PARAM AC_IR MODE VALUE POSITION (225,34)
+ACU : PARAM pe_ir MODE VALUE POSITION (225,50)
+ACU : PARAM PEC MODE VALUE POSITION (225,66)
+ACU : PORT instr_request side LEFT position 15
+ACU : PORT data_request side LEFT position 15
+ACU : port instr_in side LEFT position 45 ICON portr
+ACU : PORT data_in side LEFT position 45 ICON portr
+
+CLOCK : position (570,20)
+CPHASE : position (570,20)
 CPHASE : STATES S:ClockS P0:ClockP0 P1:ClockP1
 CPHASE : PARAM cycle MODE VALUE POSITION (70,32)
 
-ACU : position (20,130)
-ACU : STATES ACU_IDLE:acu_idle ACU_BUSY:acu_busy
-ACU : PARAM PC MODE VALUE POSITION (200,2)
-ACU : PARAM CC MODE VALUE POSITION (200,22)
-ACU : PARAM IRA1 MODE VALUE POSITION (200,42)
-ACU : PARAM IRA2 MODE VALUE POSITION (200,67)
-ACU : PARAM PEC3 MODE VALUE POSITION (200,87)
-ACU : PARAM PEC2 MODE VALUE POSITION (208,87)
-ACU : PARAM PEC1 MODE VALUE POSITION (216,87)
-ACU : PARAM PEC0 MODE VALUE POSITION (224,87)
-ACU : PORT instr_request side TOP position 30
-ACU : PORT data_request side TOP position 30
-ACU : port instr_in side TOP position 110 ICON portd
-ACU : PORT data_in side TOP position 110 ICON portd
-
-MEMORY : position (20,20)
-MEMORY : STATES M_IDLE:memory_idle M_BUSY:memory_busy
-MEMORY : port instr_request side BOTTOM position 30 ICON portu
-MEMORY : port data_request side BOTTOM position 30 ICON portu
-MEMORY : port instr_out side BOTTOM position 110
-MEMORY : port data_out side BOTTOM position 110
-
-SIMD2 : position (340,20) 90 90
+SIMD2 : position (200,135) 90 90
 pe2 : STATES PE2_IDLE:pe_idle PE2_OFF:pe_off PE2_BUSY:pe_busy
 pe2 : param ACC mode value position (10,40)
 
-GLOBALS : PARAM IR MODE VALUE position (150,20)		  		
-GLOBALS : PARAM PE_CONTROL MODE VALUE position (150,40)
 		  		
-
 
