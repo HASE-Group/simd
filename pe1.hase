@@ -2,7 +2,7 @@
 // Project:	1d-Array Processor
 // Entity	Processing Element
 // File		pe1.hase
-// Date:	Nov 2005,  revised Mar 2014
+// Date:	Nov 2005,  revised Mar 2014, Jan 2024
 
 // needs to access PE_CONTROL and instructions to set/reset control bits
 // ACU also needs instructions to load PE_CONTROL
@@ -124,15 +124,15 @@ $phase0
 	right_data = r_input;
      }
 
-  if ( IRP.decode_AALU() ) // operations using neighbour results or proc no
+  if ( PE_IR.decode_AALU() ) // operations using neighbour results or proc no
    {
     select = PE_CONTROL & pec_select;	// used for printing
     if ((PE_CONTROL & pec_select) == pec_select)
       {
 	my_state = PE1_BUSY;
 	dump_state();
-	direction = (char) IRP.a_alu_field.op_source[0];
-	wrap = (char) IRP.a_alu_field.op_source[1];
+	direction = (char) PE_IR.a_alu_field.op_source[0];
+	wrap = (char) PE_IR.a_alu_field.op_source[1];
 	if ( (proc_no == 0) && ( wrap == '0') )
  	 {left_data = 0;}
 	if ( (proc_no == 7) &&  ( wrap == '0') )
@@ -146,22 +146,22 @@ $phase0
 	 {operand = proc_no;}
 	
 
-	  if (IRP.function ==  t_simd_instrn_set::ALD)	// ACC = operand
+	  if (PE_IR.function ==  t_simd_instrn_set::ALD)	// ACC = operand
 	   {ACC = operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AADD)	// ACC = ACC + operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::AADD)	// ACC = ACC + operand 
 	   {ACC = ACC + operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ASUB)	// ACC = ACC - operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::ASUB)	// ACC = ACC - operand 
 	   {ACC = ACC - operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ABUS)	// ACC = operand - ACC
+	  if (PE_IR.function ==  t_simd_instrn_set::ABUS)	// ACC = operand - ACC
 	   {ACC = operand - ACC;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AMUL)	// ACC = ACC * operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::AMUL)	// ACC = ACC * operand 
 	   {ACC = ACC * operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AVID)	// ACC = operand / ACC
+	  if (PE_IR.function ==  t_simd_instrn_set::AVID)	// ACC = operand / ACC
 	   {
 		if (ACC == 0)
 		 {div_error = true;
@@ -170,7 +170,7 @@ $phase0
 		 {ACC = operand / ACC;}
 	  }
 
-	  if (IRP.function ==  t_simd_instrn_set::ADIV)	// ACC = ACC / operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::ADIV)	// ACC = ACC / operand 
 	   {
 		if (operand == 0)
 		 {div_error = true;
@@ -179,27 +179,27 @@ $phase0
 		 {ACC = ACC / operand;}
 	   }
 
-	  if (IRP.function ==  t_simd_instrn_set::AAND)	// ACC = ACC & operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::AAND)	// ACC = ACC & operand 
 	   {ACC = ACC & operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AOR)	// ACC = ACC OR operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::AOR)	// ACC = ACC OR operand 
 	   {ACC = ACC | operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AXOR)	// ACC = ACC XOR operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::AXOR)	// ACC = ACC XOR operand 
 	   {ACC = ACC ^ operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ASLL)
+	  if (PE_IR.function ==  t_simd_instrn_set::ASLL)
 					// ACC = ACC Shift Left Logical by operand 
 	   {ACC = ACC << operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ASRL)
+	  if (PE_IR.function ==  t_simd_instrn_set::ASRL)
 				// ACC = ACC Shift Right Logical by operand 
 	   {
 		op_mask = -1 ^ ( ( (pow (2, operand)) - 1) << (32 - operand));
 		ACC = (ACC >> operand) & op_mask;
 	   }
 
-	  if (IRP.function ==  t_simd_instrn_set::ASRA)
+	  if (PE_IR.function ==  t_simd_instrn_set::ASRA)
 				// ACC = ACC Shift Right Arithmetic by operand 
 	   {
 		sign_ext = ACC & (1 << 31);
@@ -214,31 +214,31 @@ $phase0
       } 	// end of if select & pec_select
    }	// end of AALU
 
-  if ( IRP.decode_AALUI() ) // operations using a literal operand
+  if ( PE_IR.decode_AALUI() ) // operations using a literal operand
    {
     select = PE_CONTROL & pec_select;	// used for printing
        if ((PE_CONTROL & pec_select) == pec_select)
 	{
 	my_state = PE1_BUSY;
 	dump_state();
-	operand = IRP.immediate;
+	operand = PE_IR.immediate;
 
-	  if (IRP.function ==  t_simd_instrn_set::ALDI)
+	  if (PE_IR.function ==  t_simd_instrn_set::ALDI)
 		{ACC = operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AADDI)
+	  if (PE_IR.function ==  t_simd_instrn_set::AADDI)
 	   {ACC = ACC + operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ASUBI)	// ACC = ACC - operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::ASUBI)	// ACC = ACC - operand 
 		{ACC = ACC - operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ABUSI)	// ACC = operand - ACC
+	  if (PE_IR.function ==  t_simd_instrn_set::ABUSI)	// ACC = operand - ACC
 		{ACC = operand - ACC;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AMULI)	// ACC = ACC * operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::AMULI)	// ACC = ACC * operand 
 		{ACC = ACC * operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ADIVI)	// ACC = ACC / operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::ADIVI)	// ACC = ACC / operand 
 	   {
 		if (operand == 0)
 		 {div_error = true;
@@ -247,7 +247,7 @@ $phase0
 		 {ACC = ACC / operand;}
            }
 
-	  if (IRP.function ==  t_simd_instrn_set::AVIDI)	// ACC = operand / ACC
+	  if (PE_IR.function ==  t_simd_instrn_set::AVIDI)	// ACC = operand / ACC
 	   {
 		if (ACC == 0)
 		 {div_error = true;
@@ -256,28 +256,28 @@ $phase0
 		 {ACC = operand / ACC;}
 	   }
 
-	  if (IRP.function ==  t_simd_instrn_set::AANDI)	// ACC = ACC & operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::AANDI)	// ACC = ACC & operand 
 		{ACC = ACC & operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AORI)	// ACC = ACC OR operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::AORI)	// ACC = ACC OR operand 
 		{ACC = ACC | operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AXORI)
+	  if (PE_IR.function ==  t_simd_instrn_set::AXORI)
 				// ACC = ACC XOR operand 
 		{ACC = ACC ^ operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ASLLI)
+	  if (PE_IR.function ==  t_simd_instrn_set::ASLLI)
 				// ACC = ACC Shift Left Logical by operand	 
 		{ACC = ACC << operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ASRLI)
+	  if (PE_IR.function ==  t_simd_instrn_set::ASRLI)
 				// ACC = ACC Shift Right Logical by operand 
 		{
 		op_mask = -1 ^ ( ( (pow (2, operand)) - 1) << (32 - operand));
 		ACC = (ACC >> operand) & op_mask;
 		}
 
-	  if (IRP.function ==  t_simd_instrn_set::ASRAI)
+	  if (PE_IR.function ==  t_simd_instrn_set::ASRAI)
 				// ACC = ACC Shift Right Arithmetic by operand 
 	   {
 		sign_ext = ACC & (1 << 31);
@@ -291,14 +291,14 @@ $phase0
      } // end of if mask & pec_select
   } // end of if AALUI
 
-  if ( IRP.decode_AALUM() ) // operations using a value in memory 
+  if ( PE_IR.decode_AALUM() ) // operations using a value in memory 
    {
     select = PE_CONTROL & pec_select;	// used for printing
        if ((PE_CONTROL & pec_select) == pec_select)
 	{
 	my_state = PE1_BUSY;
 	dump_state();
-	address = IRP.a_alum_field.address;
+	address = PE_IR.a_alum_field.address;
 	if (address >= 0 && (address < PE_Mem_Size))
 	 {operand = pe_mem[address];}
 	else
@@ -306,46 +306,46 @@ $phase0
 	output_data = true;
 
 	 {
-	  if (IRP.function ==  t_simd_instrn_set::ALDM)
+	  if (PE_IR.function ==  t_simd_instrn_set::ALDM)
 		{ACC = operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AADDM)
+	  if (PE_IR.function ==  t_simd_instrn_set::AADDM)
 		{ACC = ACC + operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ASUBM)	// ACC = ACC - operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::ASUBM)	// ACC = ACC - operand 
 		{ACC = ACC - operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ABUSM)	// ACC = operand - ACC
+	  if (PE_IR.function ==  t_simd_instrn_set::ABUSM)	// ACC = operand - ACC
 		{ACC = operand - ACC;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AMULM)	// ACC = ACC * operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::AMULM)	// ACC = ACC * operand 
 		{ACC = ACC * operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ADIVM)	// ACC = ACC / operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::ADIVM)	// ACC = ACC / operand 
 		{ACC = ACC / operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AVIDM)	// ACC = operand /  ACC
+	  if (PE_IR.function ==  t_simd_instrn_set::AVIDM)	// ACC = operand /  ACC
 		{ACC = operand / ACC;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AANDM)	// ACC = ACC & operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::AANDM)	// ACC = ACC & operand 
 		{ACC = ACC & operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AORM)	// ACC = ACC OR operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::AORM)	// ACC = ACC OR operand 
 		{ACC = ACC | operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::AXORM)	// ACC = ACC XOR operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::AXORM)	// ACC = ACC XOR operand 
 		{ACC = ACC ^ operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ASLLM)	// ACC = ACC Shift Left Logical by operand	 
+	  if (PE_IR.function ==  t_simd_instrn_set::ASLLM)	// ACC = ACC Shift Left Logical by operand	 
 		{ACC = ACC << operand;}
 
-	  if (IRP.function ==  t_simd_instrn_set::ASRLM)	// ACC = ACC Shift Right Logical by operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::ASRLM)	// ACC = ACC Shift Right Logical by operand 
 	   {
 		op_mask = -1 ^ ( ( (pow (2, operand)) - 1) << (32 - operand));
 		ACC = (ACC >> operand) & op_mask;
 	   }
 
-	  if (IRP.function ==  t_simd_instrn_set::ASRAM)	// ACC = ACC Shift Right Arithmetic by operand 
+	  if (PE_IR.function ==  t_simd_instrn_set::ASRAM)	// ACC = ACC Shift Right Arithmetic by operand 
 //		ACC >> operand;
 	   {
 		sign_ext = ACC & (1 << 31);
@@ -354,9 +354,9 @@ $phase0
 			if (sign_ext != 0)
 			{ACC = ACC | op_mask;}
 		}
-	  if (IRP.function ==  t_simd_instrn_set::ASTM)
+	  if (PE_IR.function ==  t_simd_instrn_set::ASTM)
 	   {
-		pe_mem.Update(IRP.a_alum_field.address, ACC);
+		pe_mem.Update(PE_IR.a_alum_field.address, ACC);
 		output_data = false;
 	   }
 	}
@@ -364,17 +364,17 @@ $phase0
   } // end of if AALUM
 
 
-  if  (IRP.decode_ASETPEC())	// sets PE Control bit if condition
+  if  (PE_IR.decode_ASETPEC())	// sets PE Control bit if condition
 				// between ACC and operand is true
       {
 	my_pec = 0;
 	output_data = false;
 
-	  if (IRP.function ==  t_simd_instrn_set::ASEQ)		// ACC = operand
+	  if (PE_IR.function ==  t_simd_instrn_set::ASEQ)		// ACC = operand
 	   {
 	 	my_state = PE1_BUSY;
 		dump_state();
-		operand = IRP.immediate;
+		operand = PE_IR.immediate;
 		if (ACC == operand)
 		{
 		 PE_CONTROL = PE_CONTROL | pec_select;
@@ -382,11 +382,11 @@ $phase0
 		}
 	   }
 
-	  if (IRP.function ==  t_simd_instrn_set::ASNE)		// ACC != operand
+	  if (PE_IR.function ==  t_simd_instrn_set::ASNE)		// ACC != operand
 	   {
 	 	my_state = PE1_BUSY;
 		dump_state();
-		operand = IRP.immediate;
+		operand = PE_IR.immediate;
 		if (ACC != operand)
 		{
 		 PE_CONTROL = PE_CONTROL | pec_select;
@@ -394,11 +394,11 @@ $phase0
 		}
 	   }
 
-	  if (IRP.function ==  t_simd_instrn_set::ASGT)			// ACC > operand
+	  if (PE_IR.function ==  t_simd_instrn_set::ASGT)			// ACC > operand
 	   {
 	 	my_state = PE1_BUSY;
 		dump_state();
-		operand = IRP.immediate;
+		operand = PE_IR.immediate;
 		if (ACC > operand)
 		{
 		 PE_CONTROL = PE_CONTROL | pec_select;
@@ -406,11 +406,11 @@ $phase0
 		}
 	   }
 
-	  if (IRP.function ==  t_simd_instrn_set::ASLT)			// ACC < operand
+	  if (PE_IR.function ==  t_simd_instrn_set::ASLT)			// ACC < operand
 	   {
 	 	my_state = PE1_BUSY;
 		dump_state();
-		operand = IRP.immediate;
+		operand = PE_IR.immediate;
 		if (ACC < operand)
 		{
 		 PE_CONTROL = PE_CONTROL | pec_select;
@@ -418,11 +418,11 @@ $phase0
 		}
 	   }
 
-	  if (IRP.function ==  t_simd_instrn_set::ASGE)			// ACC >= operand
+	  if (PE_IR.function ==  t_simd_instrn_set::ASGE)			// ACC >= operand
 	   {
 	 	my_state = PE1_BUSY;
 		dump_state();
-		operand = IRP.immediate;
+		operand = PE_IR.immediate;
 		if (ACC >= operand)
 		{
 		 PE_CONTROL = PE_CONTROL | pec_select;
@@ -430,18 +430,18 @@ $phase0
 		}
 	   }
 
-	  if (IRP.function ==  t_simd_instrn_set::ASLE)			// ACC <= operand
+	  if (PE_IR.function ==  t_simd_instrn_set::ASLE)			// ACC <= operand
 	   {
 	 	my_state = PE1_BUSY;
 		dump_state();
-		operand = IRP.immediate;
+		operand = PE_IR.immediate;
 		if (ACC <= operand)
 		{
 		 PE_CONTROL = PE_CONTROL | pec_select;
 	         my_pec = pec_select;
 		}
 	   }
-	}	// end of IRP decode
+	}	// end of PE_IR decode
 
 	 if (my_state != old_state)
 	  {dump_state();
