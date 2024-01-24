@@ -2,13 +2,12 @@ PROJECT(
 	PREAMBLE(
 		 NAME "SIMD-2"
 		 AUTHOR "Roland Ibbett"
-		 VERSION 2.3
+		 VERSION 2.5
 		 DESCRIPTION "2-dimensional array processor" 
 		 )	
 	PARAMLIB (
 
 -- DEFINITION OF INSTRUCTION STRUCTURES
-
 
 -- operands for load/store from/to memory using address +(index reg)
 	STRUCT (t_load, [RSTRING (dest_reg, "-", 5), RSTRING (src_reg, "-", 5),
@@ -53,6 +52,9 @@ RINT (address, 0)]);
 
 --  operands for AALUM Array instructions (memory, indexed by R reg)
 	STRUCT (t_a_alum, [RSTRING (src_reg, "-", 5), RINT (address, 0)]);
+
+-- definition of register arguments
+	STRUCT (t_reg_args, [RCHAR(type, '-'), RINT(number, 0), RINT(index, 0)]);
 
 -- Definition of instruction set
 	INSTR (t_simd_instrn_set, [(NOP),
@@ -117,7 +119,8 @@ RINT (address, 0)]);
 	)
 
 	GLOBALS (
-		RINSTR (t_simd_instrn_set, IRP);
+		RINT (Max_Time_Left, 4000);
+		RINSTR (t_simd_instrn_set, PE_IR);	-- loaded by ACU from IRA2, read by PEs
 		RINT(PE_CONTROL,0xFFFF);
 	)
 
@@ -132,17 +135,12 @@ RINT (address, 0)]);
 		DESCRIPTION ("Array Control Unit")
 		STATES (ACU_IDLE, ACU_BUSY)
 		PARAMS (
-			RRANGE (log_max_cycles, 1, 20, 10)
-			RARRAY ( prog_reg_set, main_reg, 16);
-			RINSTR (t_simd_instrn_set, IRA1);
-			RINSTR (t_simd_instrn_set, IRA2);
 			RSTRUCT ( pc_struct, PC);
 			RINT (CC,0 );
-			RINT (PEControl, 0xFFFF);
-			RINT (PEC3, 0xF);
-			RINT (PEC2, 0xF);
-			RINT (PEC1, 0xF);
-			RINT (PEC0, 0xF);
+			RINSTR (t_simd_instrn_set, AC_IR);
+			RINSTR (t_simd_instrn_set, pe_ir);	-- local version of PE_IR, to which it gets copied
+			RINT (PEC, 0xFFFF);
+			RARRAY ( prog_reg_set, main_reg, 16);
 			)
 		PORTS (
 			PORT(instr_request,l_to_imem,SOURCE);
